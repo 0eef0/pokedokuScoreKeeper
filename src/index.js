@@ -1,9 +1,10 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes } = require('discord.js');
+// discord.js dependencies
+const { Client, GatewayIntentBits, SlashCommandBuilder } = require('discord.js');
 
-require('dotenv').config();
-const connectDB = require('../db/connect');
-const scoreModel = require('../models/score');
-const client = new Client({
+require('dotenv').config(); // loading the .env
+const connectDB = require('../db/connect'); // importing code to connect to database
+const scoreModel = require('../models/score'); // importing the model for entries in the database
+const client = new Client({ // initialize the bot itself
     intents: (
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -11,14 +12,16 @@ const client = new Client({
     )
 });
 
+// Code to erase all commands
 // const rest = new REST().setToken(process.env.TOKEN);
 // rest.put(Routes.applicationCommands('1171318313276686356'), { body: [] })
 // 	.then(() => console.log('Successfully deleted all application commands.'))
 // 	.catch(console.error);
 
+// This code retrieves all scores from the database and inputs the leaderboard into the chat.
 const getAllScores = async (interaction) => {
     try {
-        const scores = await scoreModel.find({});
+        const scores = await scoreModel.find({}); // get all scores from the database
         const sortedScores = scores.sort((a,b) => {
             if(a.score > b.score) {
                 return -1;
@@ -27,27 +30,29 @@ const getAllScores = async (interaction) => {
             } else {
                 return 0;
             }
-        });
-        let res = 'Leaderboard:\n';
+        }); // sort them all in descending order
+        let res = 'Leaderboard:\n'; // initialize the message string
         for(let i = 0; i < sortedScores.length; i++) {
-            res += `${i + 1}. ${sortedScores[i].name} with ${sortedScores[i].score} points\n`;
+            res += `${i + 1}. ${sortedScores[i].name} with ${sortedScores[i].score} points\n`; // add each score to the message string
         }
-        interaction.reply(res);
-        console.log(sortedScores);
+        interaction.reply(res); // Send the message string into the chat
+        //console.log(sortedScores);
     } catch (err) {
         console.error(err);
     }
 }
+
+// This is the method that changes the score for a person specified in the interaction object, by the number of points given.
 const pointAdjust = async(interaction, points) => {
     try {
-        const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName;
-        const userObject = await scoreModel.findOne({ name: userName });
-        if(!userObject) {
+        const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName; // ternary operator used here to prioritize server nicknames and fall back to universal names
+        const userObject = await scoreModel.findOne({ name: userName }); // find a user in the database with matching username
+        if(!userObject) { // if the user doesn't exist, then add them to the database and initialize them with the given amount of points
             scoreModel.create({
                 name: userName,
                 score: points
             });
-        } else {
+        } else { // if the user does exist, then simply take their entry in the database and update their score by the amount of points given
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
                 name: userName,
                 score: userObject.score + points,
@@ -55,23 +60,25 @@ const pointAdjust = async(interaction, points) => {
             {
                 new: true,
             });
-            console.log(updatedUserObj);
+            //console.log(updatedUserObj);
         }
     } catch (err) {
         console.error(err);
     }
 }
 
-client.on('ready', async (e) => {
+client.on('ready', async (e) => { // run to make sure the bot is ready for inputs
     console.log(`${e.user.tag} is ready!`);
-    client.user.setActivity('Keepin Scores');
+    client.user.setActivity('Keepin Scores'); // set the bot activity
 
+    // connecting to the database
     try {
         await connectDB(process.env.MONGO_URI);
     } catch (err) {
         console.error(err);
     }
 
+    // initializing commands for adding points on the leaderboard for first, second, and third place
     const first = new SlashCommandBuilder().setName('first').setDescription('Add three points for yourself in the leaderboard');
     client.application.commands.create(first);
     const second = new SlashCommandBuilder().setName('second').setDescription('Add two points for yourself in the leaderboard');
@@ -79,16 +86,20 @@ client.on('ready', async (e) => {
     const third = new SlashCommandBuilder().setName('third').setDescription('Add a point for yourself in the leaderboard');
     client.application.commands.create(third);
 
+    // initializing the command to remove points on the leaderboard
     const oops = new SlashCommandBuilder().setName('oops').setDescription('Remove a point from yourself in the leaderboard');
     client.application.commands.create(oops);
 
+    // initializing the command to print the leaderboard and send it in the chat
     const leaderboard = new SlashCommandBuilder().setName('leaderboard').setDescription('Get the current leaderboard');
     client.application.commands.create(leaderboard);
 });
 
+// code that takes in commands from users and does stuff with them
 client.on('interactionCreate', (interaction) => {
-    if(!interaction.isChatInputCommand()) return;
+    if(!interaction.isChatInputCommand()) return; // if the command is not initialized, then return blank
 
+    // commands for adding points to the leaderboard
     if(interaction.commandName === 'first') {
         interaction.reply(`Good job ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Crush it again tomorrow!`);
         pointAdjust(interaction, 3);
@@ -101,13 +112,18 @@ client.on('interactionCreate', (interaction) => {
         interaction.reply(`You be slackin ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }!`);
         pointAdjust(interaction, 1);
     }
+
+    // command for remove points from the leaderboard
     if(interaction.commandName === 'oops') {
         interaction.reply('Make sure you only use "/win" when you have actually won a day');
         pointAdjust(interaction, -1);
     }
+
+    // command for displaying the leaderboard
     if(interaction.commandName === 'leaderboard') {
         getAllScores(interaction);
     }
 });
 
+// Login for the bot
 client.login(process.env.TOKEN);
