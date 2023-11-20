@@ -11,6 +11,11 @@ const client = new Client({
     )
 });
 
+// const rest = new REST().setToken(process.env.TOKEN);
+// rest.put(Routes.applicationCommands('1171318313276686356'), { body: [] })
+// 	.then(() => console.log('Successfully deleted all application commands.'))
+// 	.catch(console.error);
+
 const getAllScores = async (interaction) => {
     try {
         const scores = await scoreModel.find({});
@@ -33,42 +38,19 @@ const getAllScores = async (interaction) => {
         console.error(err);
     }
 }
-const win = async(interaction) => {
+const pointAdjust = async(interaction, points) => {
     try {
         const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName;
         const userObject = await scoreModel.findOne({ name: userName });
         if(!userObject) {
             scoreModel.create({
                 name: userName,
-                score: 1
+                score: points
             });
         } else {
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
                 name: userName,
-                score: userObject.score + 1,
-            },
-            {
-                new: true,
-            });
-            console.log(updatedUserObj);
-        }
-    } catch (err) {
-        console.error(err);
-    }
-}
-const lose = async(interaction) => {
-    try {
-        const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName;
-        const userObject = await scoreModel.findOne({ name: userName });
-        if(!userObject) {
-            scoreModel.create({
-                name: userName,
-                score: 1
-            });
-        } else {
-            const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
-                name: userName,
-                score: userObject.score - 1,
+                score: userObject.score + points,
             },
             {
                 new: true,
@@ -90,8 +72,12 @@ client.on('ready', async (e) => {
         console.error(err);
     }
 
-    const win = new SlashCommandBuilder().setName('win').setDescription('Add a point for yourself in the leaderboard');
-    client.application.commands.create(win);
+    const first = new SlashCommandBuilder().setName('first').setDescription('Add three points for yourself in the leaderboard');
+    client.application.commands.create(first);
+    const second = new SlashCommandBuilder().setName('second').setDescription('Add two points for yourself in the leaderboard');
+    client.application.commands.create(second);
+    const third = new SlashCommandBuilder().setName('third').setDescription('Add a point for yourself in the leaderboard');
+    client.application.commands.create(third);
 
     const oops = new SlashCommandBuilder().setName('oops').setDescription('Remove a point from yourself in the leaderboard');
     client.application.commands.create(oops);
@@ -103,13 +89,21 @@ client.on('ready', async (e) => {
 client.on('interactionCreate', (interaction) => {
     if(!interaction.isChatInputCommand()) return;
 
-    if(interaction.commandName === 'win') {
+    if(interaction.commandName === 'first') {
         interaction.reply(`Good job ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Crush it again tomorrow!`);
-        win(interaction);
+        pointAdjust(interaction, 3);
+    }
+    if(interaction.commandName === 'second') {
+        interaction.reply(`You got robbed ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Tomorrow is a new day!`);
+        pointAdjust(interaction, 2);
+    }
+    if(interaction.commandName === 'third') {
+        interaction.reply(`You be slackin ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }!`);
+        pointAdjust(interaction, 1);
     }
     if(interaction.commandName === 'oops') {
         interaction.reply('Make sure you only use "/win" when you have actually won a day');
-        lose(interaction);
+        pointAdjust(interaction, -1);
     }
     if(interaction.commandName === 'leaderboard') {
         getAllScores(interaction);
