@@ -74,6 +74,7 @@ const getAllScores = async (interaction) => {
                 recentScore: highestStreak.recentScore,
                 streak: highestStreak.streak
             })
+            res += ` You are doing exceptionally well though, here is a gold star for your efforts!`
         }
 
         interaction.reply(res); // Send the message string into the chat
