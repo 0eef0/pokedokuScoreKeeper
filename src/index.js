@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits, SlashCommandBuilder } = require('discord.js')
 require('dotenv').config(); // loading the .env
 const connectDB = require('../db/connect'); // importing code to connect to database
 const scoreModel = require('../models/score'); // importing the model for entries in the database
+const score = require('../models/score');
 const client = new Client({ // initialize the bot itself
     intents: (
         GatewayIntentBits.Guilds,
@@ -63,6 +64,16 @@ const getAllScores = async (interaction) => {
             } else {
                 res += ` Someone stop them!`
             }
+        }
+
+        // add a star to your name if you reach a streak of 10
+        if(highestStreak.streak >= 10 && highestStreak.streak % 10 == 0) {
+            await scoreModel.findOneAndUpdate({ name: highestStreak.name }, {
+                name: userName + ':star:',
+                score: highestStreak.score,
+                recentScore: highestStreak.recentScore,
+                streak: highestStreak.streak
+            })
         }
 
         interaction.reply(res); // Send the message string into the chat
