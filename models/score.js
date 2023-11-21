@@ -10,7 +10,17 @@ const ScoreSchema = new mongoose.Schema({
         type: Number,
         required: [true, 'Must provide score'],
         trim: true,
-    }
+    },
+    recentScore: {
+        type: Number,
+        required: [true, 'Must provide recent score'],
+        trim: true,
+    },
+    streak: {
+        type: Number,
+        required: [true, 'Must provide streak'],
+        trim: true,
+    },
 });
 
 module.exports = mongoose.model('Score', ScoreSchema);

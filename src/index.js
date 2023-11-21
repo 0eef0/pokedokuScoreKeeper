@@ -31,12 +31,41 @@ const getAllScores = async (interaction) => {
                 return 0;
             }
         }); // sort them all in descending order
-        let res = 'Leaderboard:\n'; // initialize the message string
-        for(let i = 0; i < sortedScores.length; i++) {
-            res += `${i + 1}. ${sortedScores[i].name} with ${sortedScores[i].score} points\n`; // add each score to the message string
+        let res = '>>> # __\t\t\tLeaderboard\t\t\t__\n'; // initialize the message string
+
+        const returnMedal = (place) => {
+            switch(place) {
+                case 1:
+                    return ':first_place:';
+                case 2:
+                    return ':second_place:';
+                case 3:
+                    return ':third_place:';
+                default:
+                    return place + '.';
+            }
         }
+
+        for(let i = 0; i < sortedScores.length; i++) {
+            res += `\t**${returnMedal(i + 1)}** ${sortedScores[i].name} with *${sortedScores[i].score} points*\n`; // add each score to the message string
+        }
+
+        let highestStreak = await scoreModel.findOne({ recentScore: 3 }); // find the current highest streak user
+
+        res += `\n### ${ highestStreak.name } has a winning streak of ${ highestStreak.streak } win${(highestStreak.streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
+
+        // add personalized message for streak of 2 or higher
+        if(highestStreak.streak >= 2) {
+            if(highestStreak.name === "Ethan") {
+                res += ` Everyone keep doin what they're doin.`
+            } else if(highestStreak.name === "Miguel"){
+                res += ` What a tryhard, you should find a girlfriend instead of studying the Pokedex.`
+            } else {
+                res += ` Someone stop them!`
+            }
+        }
+
         interaction.reply(res); // Send the message string into the chat
-        //console.log(sortedScores);
     } catch (err) {
         console.error(err);
     }
@@ -50,17 +79,21 @@ const pointAdjust = async(interaction, points) => {
         if(!userObject) { // if the user doesn't exist, then add them to the database and initialize them with the given amount of points
             scoreModel.create({
                 name: userName,
-                score: points
+                score: points,
+                recentScore: points,
+                streak: (points === 3) ? 1 : 0,
             });
         } else { // if the user does exist, then simply take their entry in the database and update their score by the amount of points given
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
                 name: userName,
                 score: userObject.score + points,
+                recentScore: points,
+                streak: (points === 3) ? userObject.streak + 1 : 0,
             },
             {
                 new: true,
             });
-            //console.log(updatedUserObj);
+            console.log(updatedUserObj);
         }
     } catch (err) {
         console.error(err);
@@ -96,7 +129,7 @@ client.on('ready', async (e) => { // run to make sure the bot is ready for input
 });
 
 // code that takes in commands from users and does stuff with them
-client.on('interactionCreate', (interaction) => {
+client.on('interactionCreate', async(interaction) => {
     if(!interaction.isChatInputCommand()) return; // if the command is not initialized, then return blank
 
     // commands for adding points to the leaderboard
@@ -115,8 +148,9 @@ client.on('interactionCreate', (interaction) => {
 
     // command for remove points from the leaderboard
     if(interaction.commandName === 'oops') {
-        interaction.reply('Make sure you only use "/win" when you have actually won a day');
-        pointAdjust(interaction, -1);
+        interaction.reply('Make sure you only use a win command when you have actually won a day');
+        let user = await scoreModel.findOne({ name: (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName });
+        pointAdjust(interaction, user.recentScore * -1);
     }
 
     // command for displaying the leaderboard
