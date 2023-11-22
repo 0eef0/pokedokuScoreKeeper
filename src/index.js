@@ -78,25 +78,27 @@ const getAllScores = async (interaction) => {
         }
 
         for(let i = 0; i < sortedScores.length; i++) {
-            res += `\t**${returnMedal(i + 1)}** ${sortedScores[i].name} with *${sortedScores[i].score} points*\n`; // add each score to the message string
+            const { name, score } = sortedScores[i]; // destructure the current player
+            res += `\t**${returnMedal(i + 1)}** ${name} with *${score} points*\n`; // add each score to the message string
         }
 
         let highestStreak = await scoreModel.findOne({ recentScore: firstScore }); // find the current highest streak user
+        const { streakName, streak } = highestStreak; // destructuring highest streak user
 
-        res += `\n### ${ highestStreak.name } has a winning streak of ${ highestStreak.streak } win${(highestStreak.streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
+        res += `\n### ${ streakName } has a winning streak of ${ streak } win${(streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
 
         // add personalized message for streak of smallStreak or higher
-        if(highestStreak.streak >= smallStreak) {
-            // if(highestStreak.name === "Ethan") {
+        if(streak >= smallStreak) {
+            // if(streakName === "Ethan") {
             //     res += ` Everyone keep doin what they're doin.`
-            // } else if(highestStreak.name === "Miguel"){
+            // } else if(streakName === "Miguel"){
             //     res += ` What a tryhard, you should find a girlfriend instead of studying the Pokedex.`
             // } else {
             //     res += ` Someone stop them!`
             // }
             let personalized = false;
             for(let i of personalizedStreakMsg) {
-                if(highestStreak.name === i.name) {
+                if(streakName === i.name) {
                     res += i.msg;
                     personalized = true;
                 }
@@ -105,17 +107,17 @@ const getAllScores = async (interaction) => {
         }
 
         // add a star to your name if you reach a streak as long as bigStreak variable
-        if(highestStreak.streak >= bigStreak && highestStreak.streak % bigStreak == 0) {
-            await scoreModel.findOneAndUpdate({ name: highestStreak.name }, {
+        if(streak >= bigStreak && streak % bigStreak == 0) {
+            await scoreModel.findOneAndUpdate({ name: streakName }, {
                 name: userName + goldStar,
                 score: highestStreak.score,
                 recentScore: highestStreak.recentScore,
-                streak: highestStreak.streak
+                streak: streak
             });
             //res += ` You are doing exceptionally well though, here is a gold star for your efforts!`;
             let personalized = false;
             for(let i of personalizedBigStreakMsg) {
-                if(highestStreak.name === i.name) {
+                if(streakName === i.name) {
                     res += i.msg;
                     personalized = true;
                 }
@@ -190,24 +192,26 @@ client.on('ready', async (e) => { // run to make sure the bot is ready for input
 client.on('interactionCreate', async(interaction) => {
     if(!interaction.isChatInputCommand()) return; // if the command is not initialized, then return blank
 
+    const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName; // ternary operator used here to prioritize server nicknames and fall back to universal names
+
     // commands for adding points to the leaderboard
     if(interaction.commandName === 'first') {
-        interaction.reply(`Good job ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Crush it again tomorrow!`);
+        interaction.reply(`Good job ${ userName }! Crush it again tomorrow!`);
         pointAdjust(interaction, firstScore);
     }
     if(interaction.commandName === 'second') {
-        interaction.reply(`You got robbed ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Tomorrow is a new day!`);
+        interaction.reply(`You got robbed ${ userName }! Tomorrow is a new day!`);
         pointAdjust(interaction, secondScore);
     }
     if(interaction.commandName === 'third') {
-        interaction.reply(`You be slackin ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }!`);
+        interaction.reply(`You be slackin ${ userName }!`);
         pointAdjust(interaction, thirdScore);
     }
 
     // command for remove points from the leaderboard
     if(interaction.commandName === 'oops') {
         interaction.reply('Make sure you only use a win command when you have actually won a day');
-        let user = await scoreModel.findOne({ name: (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName });
+        let user = await scoreModel.findOne({ name: userName });
         pointAdjust(interaction, user.recentScore * -1);
     }
 
