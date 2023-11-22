@@ -19,6 +19,13 @@ const client = new Client({ // initialize the bot itself
 // 	.then(() => console.log('Successfully deleted all application commands.'))
 // 	.catch(console.error);
 
+// Some global variables regarding scores and streaks
+const firstScore = 3;
+const secondScore = 2;
+const thirdScore = 1;
+const smallStreak = 2;
+const bigStreak = 10;
+
 // This code retrieves all scores from the database and inputs the leaderboard into the chat.
 const getAllScores = async (interaction) => {
     try {
@@ -43,7 +50,7 @@ const getAllScores = async (interaction) => {
                 case 3:
                     return ':third_place:';
                 default:
-                    return place + '.';
+                    return ' ' + place + '.';
             }
         }
 
@@ -51,12 +58,12 @@ const getAllScores = async (interaction) => {
             res += `\t**${returnMedal(i + 1)}** ${sortedScores[i].name} with *${sortedScores[i].score} points*\n`; // add each score to the message string
         }
 
-        let highestStreak = await scoreModel.findOne({ recentScore: 3 }); // find the current highest streak user
+        let highestStreak = await scoreModel.findOne({ recentScore: firstScore }); // find the current highest streak user
 
         res += `\n### ${ highestStreak.name } has a winning streak of ${ highestStreak.streak } win${(highestStreak.streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
 
-        // add personalized message for streak of 2 or higher
-        if(highestStreak.streak >= 2) {
+        // add personalized message for streak of smallStreak or higher
+        if(highestStreak.streak >= smallStreak) {
             if(highestStreak.name === "Ethan") {
                 res += ` Everyone keep doin what they're doin.`
             } else if(highestStreak.name === "Miguel"){
@@ -66,8 +73,8 @@ const getAllScores = async (interaction) => {
             }
         }
 
-        // add a star to your name if you reach a streak of 10
-        if(highestStreak.streak >= 10 && highestStreak.streak % 10 == 0) {
+        // add a star to your name if you reach a streak as long as bigStreak variable
+        if(highestStreak.streak >= bigStreak && highestStreak.streak % bigStreak == 0) {
             await scoreModel.findOneAndUpdate({ name: highestStreak.name }, {
                 name: userName + ':star:',
                 score: highestStreak.score,
@@ -92,15 +99,15 @@ const pointAdjust = async(interaction, points) => {
             scoreModel.create({
                 name: userName,
                 score: points,
-                recentScore: points,
-                streak: (points === 3) ? 1 : 0,
+                recentScore: Math.abs(points),
+                streak: (points === firstScore) ? 1 : 0,
             });
         } else { // if the user does exist, then simply take their entry in the database and update their score by the amount of points given
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
                 name: userName,
                 score: userObject.score + points,
-                recentScore: points,
-                streak: (points === 3) ? userObject.streak + 1 : 0,
+                recentScore: Math.abs(points),
+                streak: (points === firstScore) ? userObject.streak + 1 : 0,
             },
             {
                 new: true,
@@ -147,15 +154,15 @@ client.on('interactionCreate', async(interaction) => {
     // commands for adding points to the leaderboard
     if(interaction.commandName === 'first') {
         interaction.reply(`Good job ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Crush it again tomorrow!`);
-        pointAdjust(interaction, 3);
+        pointAdjust(interaction, firstScore);
     }
     if(interaction.commandName === 'second') {
         interaction.reply(`You got robbed ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }! Tomorrow is a new day!`);
-        pointAdjust(interaction, 2);
+        pointAdjust(interaction, secondScore);
     }
     if(interaction.commandName === 'third') {
         interaction.reply(`You be slackin ${ (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName }!`);
-        pointAdjust(interaction, 1);
+        pointAdjust(interaction, thirdScore);
     }
 
     // command for remove points from the leaderboard
