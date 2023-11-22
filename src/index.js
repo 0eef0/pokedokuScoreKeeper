@@ -83,7 +83,7 @@ const getAllScores = async (interaction) => {
         }
 
         let highestStreak = await scoreModel.findOne({ recentScore: firstScore }); // find the current highest streak user
-        const { streakName, streak } = highestStreak; // destructuring highest streak user
+        const { name: streakName, streak } = highestStreak; // destructuring highest streak user
 
         res += `\n### ${ streakName } has a winning streak of ${ streak } win${(streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
 
