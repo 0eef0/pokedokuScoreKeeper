@@ -4,7 +4,6 @@ const { Client, GatewayIntentBits, SlashCommandBuilder } = require('discord.js')
 require('dotenv').config(); // loading the .env
 const connectDB = require('../db/connect'); // importing code to connect to database
 const scoreModel = require('../models/score'); // importing the model for entries in the database
-const score = require('../models/score');
 const client = new Client({ // initialize the bot itself
     intents: (
         GatewayIntentBits.Guilds,
@@ -20,11 +19,35 @@ const client = new Client({ // initialize the bot itself
 // 	.catch(console.error);
 
 // Some global variables regarding scores and streaks
-const firstScore = 3;
-const secondScore = 2;
-const thirdScore = 1;
-const smallStreak = 2;
-const bigStreak = 10;
+const firstScore = 3; // points rewarded to first place
+const secondScore = 2; // points rewarded to second place
+const thirdScore = 1; // points rewarded to third place
+const smallStreak = 2; // streak length requirement for personalized messages
+const bigStreak = 10; // streak length requirement for a gold star
+
+// Some global variables regarding emoticons used in messages, just in case a server has better ones to use
+const firstPlace = ':first_place:'; // used instead of 1. on the leaderboard
+const secondPlace = ':second_place:'; // used instead of 2. on the leaderboard
+const thirdPlace = ':third_place:'; // used instead of 3. on the leaderboard
+const goldStar = ':star:'; // rewarded to players with a bigStreak of wins
+
+// Some global variables regarding universal and personalized messages
+// Messages with embeded usernames are not included here, as they have to pull information that we do not have at this point of declaration
+const personalizedStreakMsg = [
+    {
+        name: 'Ethan',
+        msg: ` Everyone keep doin what they're doin.`
+    },
+    {
+        name: 'Miguel',
+        mgs: ` What a tryhard, you should find a girlfriend instead of studying the Pokedex.`
+    }
+];
+const universalStreakMsg = ` Someone stop them!`;
+
+const personalizedBigStreakMsg = [];
+const universalBigStreakMsg = ` You are doing exceptionally well though, here is a gold star for your efforts!`;
+
 
 // This code retrieves all scores from the database and inputs the leaderboard into the chat.
 const getAllScores = async (interaction) => {
@@ -44,11 +67,11 @@ const getAllScores = async (interaction) => {
         const returnMedal = (place) => {
             switch(place) {
                 case 1:
-                    return ':first_place:';
+                    return firstPlace;
                 case 2:
-                    return ':second_place:';
+                    return secondPlace;
                 case 3:
-                    return ':third_place:';
+                    return thirdPlace;
                 default:
                     return ' ' + place + '.';
             }
@@ -64,24 +87,40 @@ const getAllScores = async (interaction) => {
 
         // add personalized message for streak of smallStreak or higher
         if(highestStreak.streak >= smallStreak) {
-            if(highestStreak.name === "Ethan") {
-                res += ` Everyone keep doin what they're doin.`
-            } else if(highestStreak.name === "Miguel"){
-                res += ` What a tryhard, you should find a girlfriend instead of studying the Pokedex.`
-            } else {
-                res += ` Someone stop them!`
+            // if(highestStreak.name === "Ethan") {
+            //     res += ` Everyone keep doin what they're doin.`
+            // } else if(highestStreak.name === "Miguel"){
+            //     res += ` What a tryhard, you should find a girlfriend instead of studying the Pokedex.`
+            // } else {
+            //     res += ` Someone stop them!`
+            // }
+            let personalized = false;
+            for(let i of personalizedStreakMsg) {
+                if(highestStreak.name === i.name) {
+                    res += i.msg;
+                    personalized = true;
+                }
             }
+            if(!personalized) res += universalStreakMsg;
         }
 
         // add a star to your name if you reach a streak as long as bigStreak variable
         if(highestStreak.streak >= bigStreak && highestStreak.streak % bigStreak == 0) {
             await scoreModel.findOneAndUpdate({ name: highestStreak.name }, {
-                name: userName + ':star:',
+                name: userName + goldStar,
                 score: highestStreak.score,
                 recentScore: highestStreak.recentScore,
                 streak: highestStreak.streak
-            })
-            res += ` You are doing exceptionally well though, here is a gold star for your efforts!`
+            });
+            //res += ` You are doing exceptionally well though, here is a gold star for your efforts!`;
+            let personalized = false;
+            for(let i of personalizedBigStreakMsg) {
+                if(highestStreak.name === i.name) {
+                    res += i.msg;
+                    personalized = true;
+                }
+            }
+            if(!personalized) res += universalBigStreakMsg;
         }
 
         interaction.reply(res); // Send the message string into the chat
