@@ -238,8 +238,41 @@ client.on('ready', async (e) => { // run to make sure the bot is ready for input
     client.application.commands.create(leaderboard);
 
     // initializing the command to reset the leaderboard and give current leader a crown in their name
-    const reset = new SlashCommandBuilder().setName('reset').setDescription('Reset the leaderboard and give current leader a crown (Admins only).');
+    const reset = new SlashCommandBuilder().setName('reset').setDescription('Reset the leaderboard and give current leader a crown (Admins only)');
     client.application.commands.create(reset);
+
+    // initializing the command to register your birthday to the database
+    const register = new SlashCommandBuilder().setName('register').setDescription('Register your birthday to the database').addStringOption(option => option.setName('month').setDescription('Choose your birth month').setRequired(true).addChoices(
+        { name: 'January', value: '0' },
+        { name: 'February', value: '1' },
+        { name: 'March', value: '2' },
+        { name: 'April', value: '3' },
+        { name: 'May', value: '4' },
+        { name: 'June', value: '5' },
+        { name: 'July', value: '6' },
+        { name: 'August', value: '7' },
+        { name: 'September', value: '8' },
+        { name: 'October', value: '9' },
+        { name: 'November', value: '10' },
+        { name: 'December', value: '11' },
+    )).addStringOption(option => option.setName('datefirstdigit').setDescription('Choose your birth date (first digit)').setRequired(true).addChoices(
+        { name: '0', value: '0' },
+        { name: '1', value: '1' },
+        { name: '2', value: '2' },
+        { name: '3', value: '3' }
+        )).addStringOption(option => option.setName('dateseconddigit').setDescription('Choose your birth date (second digit)').setRequired(true).addChoices(
+        { name: '0', value: '0' },
+        { name: '1', value: '1' },
+        { name: '2', value: '2' },
+        { name: '3', value: '3' },
+        { name: '4', value: '4' },
+        { name: '5', value: '5' },
+        { name: '6', value: '6' },
+        { name: '7', value: '7' },
+        { name: '8', value: '8' },
+        { name: '9', value: '9' }
+        ));
+    client.application.commands.create(register);
 });
 
 // code that takes in commands from users and does stuff with them
@@ -248,18 +281,75 @@ client.on('interactionCreate', async(interaction) => {
 
     const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName; // ternary operator used here to prioritize server nicknames and fall back to universal names
 
+    const today = new Date();
+    const currMonth = today.getMonth();
+    const currDate = today.getDate();
+    const currDay = today.getDay();
+
+    const user = await scoreModel.findOne({ name: userName });
+    const userBMonth = user.birthMonth;
+    const userBDate = user.birthDate;
+
     // commands for adding points to the leaderboard
-    if(interaction.commandName === 'first') {
-        interaction.reply(`Good job ${ userName }! Crush it again tomorrow!`);
-        pointAdjust(interaction, firstScore);
-    }
-    if(interaction.commandName === 'second') {
-        interaction.reply(`You got robbed ${ userName }! Tomorrow is a new day!`);
-        pointAdjust(interaction, secondScore);
-    }
-    if(interaction.commandName === 'third') {
-        interaction.reply(`You be slackin ${ userName }!`);
-        pointAdjust(interaction, thirdScore);
+    if(['first', 'second', 'third'].indexOf(interaction.commandName) > -1) {
+        let msgData = {};
+        switch(true) {
+            case currMonth == userBMonth && currDate == userBDate:
+                msgData = {
+                    msg: `Happy Birthday ${ userName }! Triple Points! Some consolation for being gross and old.`,
+                    modifier: 3,
+                };
+                break;
+            case currMonth == 11 && currDate == 25:
+                msgData = {
+                    msg: `Merry Christmas ${ userName }! :christmas_tree: Double Points!`,
+                    modifier: 2,
+                };
+                break;
+            case currMonth == 0 && currDate == 1:
+                msgData = {
+                    msg: `Happy New Year ${ userName }! Double Points! Better stick to your resolutions!`,
+                    modifier: 2,
+                };
+                break;
+            case currMonth == 9 && currDate == 31:
+                msgData = {
+                    msg: `Happy Halloween ${ userName }! Double Points! Your costume better be good or Ethan will take bonus points away!`,
+                    modifier: 2,
+                };
+                break;
+            case currMonth == 10 && currDate > 21 && currDay == 4:
+                msgData = {
+                    msg: `Happy Thanksgiving ${ userName }! :turkey: Double points! Be grateful!`,
+                    modifier: 2,
+                };
+                break;
+            case interaction.commandName === 'first':
+                msgData = {
+                    msg: `Good job ${ userName }! Crush it again tomorrow!`,
+                    modifier: 1,
+                };
+                break;
+            case interaction.commandName === 'second':
+                msgData = {
+                    msg: `You got robbed ${ userName }! Tomorrow is a new day!`,
+                    modifier: 1,
+                };
+                break;
+            case interaction.commandName === 'third':
+                msgData = {
+                    msg: `You be slackin ${ userName }!`,
+                    modifier: 1,
+                };
+                break;
+            default:
+                msgData = null;
+        }
+        interaction.reply(msgData.msg);
+        const playerScore = (interaction.commandName == 'first') ?
+                                firstScore : (interaction.commandName == 'second') ?
+                                    secondScore : thirdScore; 
+        pointAdjust(interaction, playerScore * msgData.modifier);
     }
 
     // command for remove points from the leaderboard
@@ -277,6 +367,22 @@ client.on('interactionCreate', async(interaction) => {
     // command for resetting the leaderboard
     if(interaction.commandName === 'reset') {
         resetLeaderboard(interaction);
+    }
+
+    // command for registering your birthday
+    if(interaction.commandName === 'register') {
+        if(!user.bDayRegistered) {
+            const setBMonth = Number(interaction.options._hoistedOptions[0].value);
+            const setBDate = Number(interaction.options._hoistedOptions[1].value) * 10 + Number(interaction.options._hoistedOptions[2].value)
+            await scoreModel.findOneAndUpdate({ name: userName }, {
+                birthMonth: setBMonth,
+                birthDate: setBDate,
+                bDayRegistered: true
+            });
+            interaction.reply('Your birthday has been set.')
+        } else {
+            interaction.reply('You have already registered a birthday.')
+        }
     }
 });
 

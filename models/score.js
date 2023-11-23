@@ -28,6 +28,16 @@ const ScoreSchema = new mongoose.Schema({
     crown: {
         type: Boolean,
         required: [true, 'Must provide crown status'],
+    },
+    birthMonth: {
+        type: Number
+    },
+    birthDate: {
+        type: Number,
+    },
+    bDayRegistered: {
+        type: Boolean,
+        required: [true, 'Must provide registered status']
     }
 });
 
