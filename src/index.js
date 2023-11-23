@@ -18,6 +18,9 @@ const client = new Client({ // initialize the bot itself
 // 	.then(() => console.log('Successfully deleted all application commands.'))
 // 	.catch(console.error);
 
+// Some global variables regarding permissions
+const admins = ['Ethan'];
+
 // Some global variables regarding scores and streaks
 const firstScore = 3; // points rewarded to first place
 const secondScore = 2; // points rewarded to second place
@@ -30,6 +33,7 @@ const firstPlace = ':first_place:'; // used instead of 1. on the leaderboard
 const secondPlace = ':second_place:'; // used instead of 2. on the leaderboard
 const thirdPlace = ':third_place:'; // used instead of 3. on the leaderboard
 const goldStar = ':star:'; // rewarded to players with a bigStreak of wins
+const crownIcon = ':crown:'; // rewarded to players who have won an interval
 
 // Some global variables regarding universal and personalized messages
 // Messages with embeded usernames are not included here, as they have to pull information that we do not have at this point of declaration
@@ -76,14 +80,22 @@ const getAllScores = async (interaction) => {
                     return ' ' + place + '.';
             }
         }
+        const returnCrown = (crown) => {
+            return (crown) ? crownIcon : '';
+        }
+        const returnStars = (stars) => {
+            let temp = '';
+            for(let i = 0; i < stars; i++) temp += goldStar;
+            return temp;
+        }
 
         for(let i = 0; i < sortedScores.length; i++) {
-            const { name, score } = sortedScores[i]; // destructure the current player
-            res += `\t**${returnMedal(i + 1)}** ${name} with *${score} points*\n`; // add each score to the message string
+            const { name, score, stars, crown } = sortedScores[i]; // destructure the current player
+            res += `\t**${returnMedal(i + 1)}** ${returnCrown(crown)}${name}${returnStars(stars)} with *${score} points*\n`; // add each score to the message string
         }
 
         let highestStreak = await scoreModel.findOne({ recentScore: firstScore }); // find the current highest streak user
-        const { name: streakName, streak } = highestStreak; // destructuring highest streak user
+        const { name: streakName, streak, stars, crown } = highestStreak; // destructuring highest streak user
 
         res += `\n### ${ streakName } has a winning streak of ${ streak } win${(streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
 
@@ -109,10 +121,12 @@ const getAllScores = async (interaction) => {
         // add a star to your name if you reach a streak as long as bigStreak variable
         if(streak >= bigStreak && streak % bigStreak == 0) {
             await scoreModel.findOneAndUpdate({ name: streakName }, {
-                name: userName + goldStar,
+                name: userName,
                 score: highestStreak.score,
                 recentScore: highestStreak.recentScore,
-                streak: streak
+                streak: streak,
+                stars: stars + 1,
+                crown: crown,
             });
             //res += ` You are doing exceptionally well though, here is a gold star for your efforts!`;
             let personalized = false;
@@ -131,6 +145,38 @@ const getAllScores = async (interaction) => {
     }
 }
 
+// This is the methods that resets all of the scores on the leaderboard and gives a crown to the current leader
+const resetLeaderboard = async (interaction) => {
+    const userName = (interaction.member.nickname) ? interaction.member.nickname : interaction.user.globalName; // ternary operator used here to prioritize server nicknames and fall back to universal names
+
+    if(admins.indexOf(userName) > -1) { // check whether or not the user is on the admin list
+        const scores = await scoreModel.find({}); // get all scores
+        const sortedScores = scores.sort((a,b) => {
+            if(a.score > b.score) {
+                return -1;
+            } else if(a.score < b.score) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }); // sort them all in descending order
+        // set all scores to 0, give a crown to the current leader, leave everything else the same
+        for(let i of sortedScores) {
+            await scoreModel.findOneAndUpdate({ name: i.name }, {
+                name: i.name,
+                score: 0,
+                streak: i.streak,
+                recentScore: i.recentScore,
+                stars: i.stars,
+                crown: sortedScores[0]._id == i._id,
+            });
+        }
+        interaction.reply('Scores successfully reset.'); // reset feedback
+    } else {
+        interaction.reply('You do not have permissions to use this command.'); // deny permission for non admins
+    }
+}
+
 // This is the method that changes the score for a person specified in the interaction object, by the number of points given.
 const pointAdjust = async(interaction, points) => {
     try {
@@ -142,6 +188,8 @@ const pointAdjust = async(interaction, points) => {
                 score: points,
                 recentScore: Math.abs(points),
                 streak: (points === firstScore) ? 1 : 0,
+                stars: 0,
+                crown: false,
             });
         } else { // if the user does exist, then simply take their entry in the database and update their score by the amount of points given
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
@@ -149,6 +197,8 @@ const pointAdjust = async(interaction, points) => {
                 score: userObject.score + points,
                 recentScore: Math.abs(points),
                 streak: (points === firstScore) ? userObject.streak + 1 : 0,
+                stars: 0,
+                crown: false,
             },
             {
                 new: true,
@@ -186,6 +236,10 @@ client.on('ready', async (e) => { // run to make sure the bot is ready for input
     // initializing the command to print the leaderboard and send it in the chat
     const leaderboard = new SlashCommandBuilder().setName('leaderboard').setDescription('Get the current leaderboard');
     client.application.commands.create(leaderboard);
+
+    // initializing the command to reset the leaderboard and give current leader a crown in their name
+    const reset = new SlashCommandBuilder().setName('reset').setDescription('Reset the leaderboard and give current leader a crown (Admins only).');
+    client.application.commands.create(reset);
 });
 
 // code that takes in commands from users and does stuff with them
@@ -218,6 +272,11 @@ client.on('interactionCreate', async(interaction) => {
     // command for displaying the leaderboard
     if(interaction.commandName === 'leaderboard') {
         getAllScores(interaction);
+    }
+
+    // command for resetting the leaderboard
+    if(interaction.commandName === 'reset') {
+        resetLeaderboard(interaction);
     }
 });
 
