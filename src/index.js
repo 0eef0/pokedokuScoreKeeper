@@ -212,7 +212,7 @@ const pointAdjust = async(interaction, points) => {
 
 client.on('ready', async (e) => { // run to make sure the bot is ready for inputs
     console.log(`${e.user.tag} is ready!`);
-    client.user.setActivity('Keepin Scores'); // set the bot activity
+    client.user.setActivity('scorekeeper'); // set the bot activity
 
     // connecting to the database
     try {
