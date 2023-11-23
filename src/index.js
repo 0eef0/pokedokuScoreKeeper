@@ -318,7 +318,7 @@ client.on('interactionCreate', async(interaction) => {
                     modifier: 2,
                 };
                 break;
-            case currMonth == 10 && currDate > 21 && currDay == 4:
+            case currMonth == 10 && currDate >= 22 && currDate <= 28 && currDay == 4:
                 msgData = {
                     msg: `Happy Thanksgiving ${ userName }! :turkey: Double points! Be grateful!`,
                     modifier: 2,
