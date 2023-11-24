@@ -178,7 +178,7 @@ const pointAdjust = async(interaction, points) => {
             scoreModel.create({
                 name: userName,
                 score: points,
-                recentScore: interaction.commandName,
+                recentScore: (interaction.commandName != 'oops') ? interaction.commandName : userObject.recentScore,
                 streak: (points === firstScore) ? 1 : 0,
                 stars: 0,
                 crown: false,
@@ -187,7 +187,7 @@ const pointAdjust = async(interaction, points) => {
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
                 name: userName,
                 score: userObject.score + points,
-                recentScore: interaction.commandName,
+                recentScore: (interaction.commandName != 'oops') ? interaction.commandName : userObject.recentScore,
                 streak: (points === firstScore) ? userObject.streak + 1 : 0,
                 stars: 0,
                 crown: false,
