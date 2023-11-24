@@ -12,7 +12,7 @@ const ScoreSchema = new mongoose.Schema({
         trim: true,
     },
     recentScore: {
-        type: Number,
+        type: String,
         required: [true, 'Must provide recent score'],
         trim: true,
     },

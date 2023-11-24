@@ -90,24 +90,17 @@ const getAllScores = async (interaction) => {
         }
 
         for(let i = 0; i < sortedScores.length; i++) {
-            const { name, score, stars, crown } = sortedScores[i]; // destructure the current player
+            const { name, score, stars, crown, recentScore } = sortedScores[i]; // destructure the current player
             res += `\t**${returnMedal(i + 1)}** ${returnCrown(crown)}${name}${returnStars(stars)} with *${score} points*\n`; // add each score to the message string
         }
 
-        let highestStreak = await scoreModel.findOne({ recentScore: firstScore }); // find the current highest streak user
+        let highestStreak = await scoreModel.findOne({ recentScore: 'first' }); // find the current highest streak user
         const { name: streakName, streak, stars, crown } = highestStreak; // destructuring highest streak user
 
         res += `\n### ${ streakName } has a winning streak of ${ streak } win${(streak > 1) ? 's' : ''}.`; // add the highest streak user to the message string
 
         // add personalized message for streak of smallStreak or higher
         if(streak >= smallStreak) {
-            // if(streakName === "Ethan") {
-            //     res += ` Everyone keep doin what they're doin.`
-            // } else if(streakName === "Miguel"){
-            //     res += ` What a tryhard, you should find a girlfriend instead of studying the Pokedex.`
-            // } else {
-            //     res += ` Someone stop them!`
-            // }
             let personalized = false;
             for(let i of personalizedStreakMsg) {
                 if(streakName === i.name) {
@@ -128,7 +121,6 @@ const getAllScores = async (interaction) => {
                 stars: stars + 1,
                 crown: crown,
             });
-            //res += ` You are doing exceptionally well though, here is a gold star for your efforts!`;
             let personalized = false;
             for(let i of personalizedBigStreakMsg) {
                 if(streakName === i.name) {
@@ -186,7 +178,7 @@ const pointAdjust = async(interaction, points) => {
             scoreModel.create({
                 name: userName,
                 score: points,
-                recentScore: Math.abs(points),
+                recentScore: interaction.commandName,
                 streak: (points === firstScore) ? 1 : 0,
                 stars: 0,
                 crown: false,
@@ -195,7 +187,7 @@ const pointAdjust = async(interaction, points) => {
             const updatedUserObj = await scoreModel.findByIdAndUpdate(userObject._id, {
                 name: userName,
                 score: userObject.score + points,
-                recentScore: Math.abs(points),
+                recentScore: interaction.commandName,
                 streak: (points === firstScore) ? userObject.streak + 1 : 0,
                 stars: 0,
                 crown: false,
@@ -291,60 +283,61 @@ client.on('interactionCreate', async(interaction) => {
     const userBDate = user.birthDate;
 
     // commands for adding points to the leaderboard
+    let msgData = {};
+    switch(true) {
+        case currMonth == userBMonth && currDate == userBDate:
+            msgData = {
+                msg: `Happy Birthday ${ userName }! Triple Points! Some consolation for being gross and old.`,
+                modifier: 3,
+            };
+            break;
+        case currMonth == 11 && currDate == 25:
+            msgData = {
+                msg: `Merry Christmas ${ userName }! :christmas_tree: Double Points!`,
+                modifier: 2,
+            };
+            break;
+        case currMonth == 0 && currDate == 1:
+            msgData = {
+                msg: `Happy New Year ${ userName }! Double Points! Better stick to your resolutions!`,
+                modifier: 2,
+            };
+            break;
+        case currMonth == 9 && currDate == 31:
+            msgData = {
+                msg: `Happy Halloween ${ userName }! Double Points! Your costume better be good or Ethan will take bonus points away!`,
+                modifier: 2,
+            };
+            break;
+        case currMonth == 10 && currDate >= 22 && currDate <= 28 && currDay == 4:
+            msgData = {
+                msg: `Happy Thanksgiving ${ userName }! :turkey: Double points! Be grateful!`,
+                modifier: 2,
+            };
+            break;
+        case interaction.commandName === 'first':
+            msgData = {
+                msg: `Good job ${ userName }! Crush it again tomorrow!`,
+                modifier: 1,
+            };
+            break;
+        case interaction.commandName === 'second':
+            msgData = {
+                msg: `You got robbed ${ userName }! Tomorrow is a new day!`,
+                modifier: 1,
+            };
+            break;
+        case interaction.commandName === 'third':
+            msgData = {
+                msg: `You be slackin ${ userName }!`,
+                modifier: 1,
+            };
+            break;
+        default:
+            msgData = null;
+    }
+
     if(['first', 'second', 'third'].indexOf(interaction.commandName) > -1) {
-        let msgData = {};
-        switch(true) {
-            case currMonth == userBMonth && currDate == userBDate:
-                msgData = {
-                    msg: `Happy Birthday ${ userName }! Triple Points! Some consolation for being gross and old.`,
-                    modifier: 3,
-                };
-                break;
-            case currMonth == 11 && currDate == 25:
-                msgData = {
-                    msg: `Merry Christmas ${ userName }! :christmas_tree: Double Points!`,
-                    modifier: 2,
-                };
-                break;
-            case currMonth == 0 && currDate == 1:
-                msgData = {
-                    msg: `Happy New Year ${ userName }! Double Points! Better stick to your resolutions!`,
-                    modifier: 2,
-                };
-                break;
-            case currMonth == 9 && currDate == 31:
-                msgData = {
-                    msg: `Happy Halloween ${ userName }! Double Points! Your costume better be good or Ethan will take bonus points away!`,
-                    modifier: 2,
-                };
-                break;
-            case currMonth == 10 && currDate >= 22 && currDate <= 28 && currDay == 4:
-                msgData = {
-                    msg: `Happy Thanksgiving ${ userName }! :turkey: Double points! Be grateful!`,
-                    modifier: 2,
-                };
-                break;
-            case interaction.commandName === 'first':
-                msgData = {
-                    msg: `Good job ${ userName }! Crush it again tomorrow!`,
-                    modifier: 1,
-                };
-                break;
-            case interaction.commandName === 'second':
-                msgData = {
-                    msg: `You got robbed ${ userName }! Tomorrow is a new day!`,
-                    modifier: 1,
-                };
-                break;
-            case interaction.commandName === 'third':
-                msgData = {
-                    msg: `You be slackin ${ userName }!`,
-                    modifier: 1,
-                };
-                break;
-            default:
-                msgData = null;
-        }
         interaction.reply(msgData.msg);
         const playerScore = (interaction.commandName == 'first') ?
                                 firstScore : (interaction.commandName == 'second') ?
@@ -355,8 +348,10 @@ client.on('interactionCreate', async(interaction) => {
     // command for remove points from the leaderboard
     if(interaction.commandName === 'oops') {
         interaction.reply('Make sure you only use a win command when you have actually won a day');
-        let user = await scoreModel.findOne({ name: userName });
-        pointAdjust(interaction, user.recentScore * -1);
+        const lastScore = (user.recentScore == 'first') ? 
+                            firstScore : (user.recentScore == 'second') ?
+                                secondScore : thirdScore;
+        pointAdjust(interaction, lastScore * msgData.modifier * -1);
     }
 
     // command for displaying the leaderboard
