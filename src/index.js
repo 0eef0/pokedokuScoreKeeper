@@ -334,7 +334,7 @@ client.on('interactionCreate', async(interaction) => {
             };
             break;
         default:
-            msgData = null;
+            msgData = { modifier: 1 };
     }
 
     if(['first', 'second', 'third'].indexOf(interaction.commandName) > -1) {
