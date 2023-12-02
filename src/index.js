@@ -26,7 +26,7 @@ const firstScore = 3; // points rewarded to first place
 const secondScore = 2; // points rewarded to second place
 const thirdScore = 1; // points rewarded to third place
 const smallStreak = 2; // streak length requirement for personalized messages
-const bigStreak = 10; // streak length requirement for a gold star
+const bigStreak = 5; // streak length requirement for a gold star
 
 // Some global variables regarding emoticons used in messages, just in case a server has better ones to use
 const firstPlace = ':first_place:'; // used instead of 1. on the leaderboard
@@ -92,7 +92,7 @@ const getAllScores = async (interaction) => {
         for(let i = 0; i < sortedScores.length; i++) {
             const { name, score, stars, crown } = sortedScores[i]; // destructure the current player
 
-            if(i > 0 && sortedScores[i - 1].score != score) currPlacing++;
+            if(i > 0 && sortedScores[i - 1].score != score) currPlacing++; // this is the if statement that settles ties
 
             res += `\t**${returnMedal(currPlacing)}** ${returnCrown(crown)}${name}${returnStars(stars)} with *${score} points*\n`; // add each score to the message string
         }
