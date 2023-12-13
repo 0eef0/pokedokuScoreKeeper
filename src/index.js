@@ -165,7 +165,7 @@ const resetLeaderboard = async (interaction) => {
         }
         interaction.reply('Scores successfully reset.'); // reset feedback
     } else {
-        interaction.reply('You do not have permissions to use this command.'); // deny permission for non admins
+        interaction.reply('You do not have permission to use this command.'); // deny permission for non admins
     }
 }
 
@@ -356,7 +356,11 @@ client.on('interactionCreate', async(interaction) => {
 
     // command for displaying the leaderboard
     if(interaction.commandName === 'leaderboard') {
-        getAllScores(interaction);
+        if(admins.indexOf(userName) > -1) {
+            getAllScores(interaction);
+        } else {
+            interaction.reply("You do not have permission to use this command.");
+        }
     }
 
     // command for resetting the leaderboard
