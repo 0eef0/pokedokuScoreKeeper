@@ -26,7 +26,7 @@ const firstScore = 3; // points rewarded to first place
 const secondScore = 2; // points rewarded to second place
 const thirdScore = 1; // points rewarded to third place
 const smallStreak = 2; // streak length requirement for personalized messages
-const bigStreak = 10; // streak length requirement for a gold star
+const bigStreak = 5; // streak length requirement for a gold star
 
 // Some global variables regarding emoticons used in messages, just in case a server has better ones to use
 const firstPlace = ':first_place:'; // used instead of 1. on the leaderboard
@@ -54,6 +54,26 @@ const universalBigStreakMsg = ` You are doing exceptionally well though, here is
 
 
 // This code retrieves all scores from the database and inputs the leaderboard into the chat.
+const returnMedal = (place) => {
+    switch(place) {
+        case 1:
+            return firstPlace;
+        case 2:
+            return secondPlace;
+        case 3:
+            return thirdPlace;
+        default:
+            return ' ' + place + '.';
+    }
+}
+const returnCrown = (crown) => {
+    return (crown) ? crownIcon : '';
+}
+const returnStars = (stars) => {
+    let temp = '';
+    for(let i = 0; i < stars; i++) temp += goldStar;
+    return temp;
+}
 const getAllScores = async (interaction) => {
     try {
         const scores = await scoreModel.find({}); // get all scores from the database
@@ -68,30 +88,13 @@ const getAllScores = async (interaction) => {
         }); // sort them all in descending order
         let res = '>>> # __\t\t\tLeaderboard\t\t\t__\n'; // initialize the message string
 
-        const returnMedal = (place) => {
-            switch(place) {
-                case 1:
-                    return firstPlace;
-                case 2:
-                    return secondPlace;
-                case 3:
-                    return thirdPlace;
-                default:
-                    return ' ' + place + '.';
-            }
-        }
-        const returnCrown = (crown) => {
-            return (crown) ? crownIcon : '';
-        }
-        const returnStars = (stars) => {
-            let temp = '';
-            for(let i = 0; i < stars; i++) temp += goldStar;
-            return temp;
-        }
-
+        let currPlacing = 1;
         for(let i = 0; i < sortedScores.length; i++) {
-            const { name, score, stars, crown, recentScore } = sortedScores[i]; // destructure the current player
-            res += `\t**${returnMedal(i + 1)}** ${returnCrown(crown)}${name}${returnStars(stars)} with *${score} points*\n`; // add each score to the message string
+            const { name, score, stars, crown } = sortedScores[i]; // destructure the current player
+
+            if(i > 0 && sortedScores[i - 1].score != score) currPlacing++; // this is the if statement that settles ties
+
+            res += `\t**${returnMedal(currPlacing)}** ${returnCrown(crown)}${name}${returnStars(stars)} with *${score} points*\n`; // add each score to the message string
         }
 
         let highestStreak = await scoreModel.findOne({ recentScore: 'first' }); // find the current highest streak user
