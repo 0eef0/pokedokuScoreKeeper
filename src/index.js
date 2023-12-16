@@ -117,12 +117,12 @@ const getAllScores = async (interaction) => {
         // add a star to your name if you reach a streak as long as bigStreak variable
         if(streak >= bigStreak && streak % bigStreak == 0) {
             await scoreModel.findOneAndUpdate({ name: streakName }, {
-                name: userName,
-                score: highestStreak.score,
-                recentScore: highestStreak.recentScore,
-                streak: streak,
+                //name: userName,
+                //score: highestStreak.score,
+                //recentScore: highestStreak.recentScore,
+                //streak: streak,
                 stars: stars + 1,
-                crown: crown,
+                //crown: crown,
             });
             let personalized = false;
             for(let i of personalizedBigStreakMsg) {
