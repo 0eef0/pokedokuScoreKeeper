@@ -19,7 +19,7 @@ const client = new Client({ // initialize the bot itself
 // 	.catch(console.error);
 
 // Some global variables regarding permissions
-const admins = ['Ethan'];
+const admins = ['Ethan', 'Miguel'];
 
 // Some global variables regarding scores and streaks
 const firstScore = 3; // points rewarded to first place
